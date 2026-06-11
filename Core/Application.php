@@ -2,25 +2,32 @@
 
 namespace Core;
 
-use Core\Http\Request;
+use Core\Container\Container;
 use Core\Routing\Router;
 
-class Application{
-    
-    public string $basePath;
-    public Request $request;
-    public Router $router;
+class Application extends Container{
 
+    protected string $basePath;
 
     public function __construct(string $basePath){
         $this->basePath = $basePath;
-        $this->request = new Request();
-        $this->router = new Router($this->request);
+        
+        $this->singleton(Application::class, $this);
+
+        $this->singleton(Router::class, function($app){
+            return new Router($app);
+        });
 
     }
 
-    
+
     public function run():void{
-        $this->router->resolve();
+        $router = $this->resolve(Router::class);
+
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+        $method = $_SERVER['REQUEST_METHOD'];
+
+        echo $router->resolve($uri, $method);
     }
 }

@@ -4,15 +4,14 @@ namespace Core\Routing;
 
 use Exception;
 use Core\Application;
+use Core\Http\Request;
 
 class Router{
     
     protected array $routes = [];
-
-
     protected Application $app;
 
-    public function __contruct(Application $app){
+    public function __construct(Application $app){
         $this->app = $app;
     }
 
@@ -38,7 +37,11 @@ class Router{
     }
 
 
-    public function resolve(string $uri, string $method):mixed{
+    public function resolve(Request $request):mixed{
+        
+        $uri = $request->getUri();
+        $method = $request->getMethod();
+        
         $action = $this->routes[$method][$uri] ?? null;
 
         if (is_null($action)){
@@ -46,7 +49,7 @@ class Router{
         }
 
         if (is_callable($action)){
-            return call_user_func($action);
+            return call_user_func($action, $request);
         }
 
         if (is_array($action)){

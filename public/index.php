@@ -1,22 +1,19 @@
 <?php
 
 
-define('BASE_PATH', dirname(__DIR__));
-
-require_once BASE_PATH . '/autoload.php';
-
-use Core\Application;
-
-$app = new Application(BASE_PATH);
+require_once __DIR__ .'/../autoload.php';
 
 
-$app->router->get("/", function(){
-    echo "<h1>SUCESSO</h1>";
-    echo "<p>A aplicação está rodando</p>";
+
+$app = new \Core\Application(dirname(__DIR__));
+
+
+$router = $app->resolve(\Core\Routing\Router::class);
+
+
+$router->get('/', function(){
+    return "Bem vindo sbdaig";
 });
-$app->router->get("/", function(){
-    echo "<h1>SUCESSO</h1>";
-    echo "<p>A aplicação está rodando</p>";
-});
+
 
 $app->run();

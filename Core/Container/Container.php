@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Core;
+namespace Core\Container;
 
 
 use ReflectionClass;

@@ -1,23 +1,29 @@
 <?php
+
+
 namespace Core\Http;
 
 
-class Request{
 
-    public function getMethod():string{
-        return strtolower($_SERVER['REQUEST_METHOD']??'get');
-    }
+class Request {
 
-
-    public function getUri() : string{
+    public function getUri():string{
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
 
-        $position = strpos($uri, '?');
+        return parse_url($uri, PHP_URL_PATH);
+    }
 
-        if($position !== false){
-            $uri = substr($uri, 0, $position);
-        }
+    public function getMethod():string{
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-        return $uri;
+        return strtoupper($method);
+    }
+
+    public function all():array{
+        return $_REQUEST;
+    }
+
+    public function input(string $key, mixed $default = null):mixed{
+        return $_REQUEST[$key] ?? $default;
     }
 }

@@ -17,6 +17,18 @@ abstract class Model{
     {
         $this->db = $db;
     }
+
+
+    public function getTable():string{
+        return $this->table;
+    }
+
+    public function setAttributes(array $attributes):void{
+        $this->attributes = $attributes;
+    }
+
+
+    
     public function __set(string $name, mixed $value): void{
         $method = 'set' . str_replace(' ', '', ucwords(str_replace('_',' ', $name))) . 'Attribute';
 
@@ -56,6 +68,13 @@ abstract class Model{
         }
 
         return null;
+    }
+
+
+    public function __call(string $method, array $parameters){
+        $builder = new QueryBuilder($this->db, $this);
+
+        return call_user_func_array([$builder, $method], $parameters);
     }
     
 
@@ -181,4 +200,7 @@ abstract class Model{
 
         return null;
     }
+
+
+
 }

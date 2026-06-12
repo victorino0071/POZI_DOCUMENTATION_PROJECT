@@ -17,12 +17,13 @@ class ContractController extends Controller{
     }
 
     public function show(Request $request, int $id){
-        $contract = $this->contractModel->find($id);
+        $contracts = $this->contractModel->where('id', '=', $id)->where('status', '=', 'active')->get();
 
-        if (!$contract){
+        $contract = $contracts[0] ?? null;
+
+        if(!$contract){
             return $this->json(['error'=> 'Contrato não encontrado'], 404);
         }
-
 
         $dto = [
             'id' => $contract->id,

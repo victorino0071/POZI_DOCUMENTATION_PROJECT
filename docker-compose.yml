@@ -1,6 +1,10 @@
+
+
 services:
   web:
-    image: php:8.4-cli
+    build: 
+      context: .
+      dockerfile: docker/php/Dockerfile
     container_name: pozi_framework
     working_dir: /app
     volumes:
@@ -8,3 +12,18 @@ services:
     ports:
       - "8000:8000"
     command: php -S 0.0.0.0:8000 -t public
+
+  database:
+    image: mysql:8.0
+    container_name: pozi_mysql_db    
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: pozi_docs
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

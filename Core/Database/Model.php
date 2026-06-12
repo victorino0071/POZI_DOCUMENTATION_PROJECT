@@ -7,16 +7,16 @@ use PDO;
 
 
 abstract class Model{
-    protected static ?PDO $db = null;
+    protected PDO $db;
     protected string $table;
     protected string $primaryKey = 'id';
     protected array $attributes = [];
+    protected array $relations = [];
 
-
-    public static function setConnection(PDO $pdo):void{
-        self::$db = $pdo;
+    public function __construct(PDO $db)
+    {
+        $this->db = $db;
     }
-
     public function __set(string $name, mixed $value): void{
         $method = 'set' . str_replace(' ', '', ucwords(str_replace('_',' ', $name))) . 'Attribute';
 
@@ -29,21 +29,39 @@ abstract class Model{
         $this->attributes[$name] = $value;
     }
 
-    public function __get(string $name):mixed{
-        $method = 'get' . str_replace(' ', '', ucwords(str_replace('_',' ', $name))) . 'Attribute';
+    public function __get(string $name): mixed  
+    {
         
-
-        if (method_exists($this, $method)){
+        $method = 'get' . str_replace(' ', '', ucwords(str_replace('_', ' ', $name))) . 'Attribute';
+        if (method_exists($this, $method)) {
             return $this->$method();
         }
 
-        return $this->attributes[$name]?? null;
+
+        if (array_key_exists($name, $this->attributes)) {
+            return $this->attributes[$name];
+        }
+
+        
+        if (method_exists($this, $name)) {
+            
+            if (array_key_exists($name, $this->relations)) {
+                return $this->relations[$name];
+            }
+
+            $relationData = $this->$name();
+            $this->relations[$name] = $relationData;
+            
+            return $relationData;
+        }
+
+        return null;
     }
     
 
-    public static function find(int $id): ?static{
-        $instance = new static();
-        $stmt = self::$db->prepare("SELECT * FROM {$instance->table} WHERE {$instance->primaryKey} = :id");
+    public function find(int $id): ?static{
+        
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id");
         $stmt->execute(['id' => $id]);
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -51,11 +69,11 @@ abstract class Model{
             return null;
         }
 
-        $instance->attributes = $data;
-        return $instance;
+        $this->attributes = $data;
+        return $this;
     }
 
-    public function save():boll{
+    public function save():bool{
         if(isset($this->attributes[$this->primaryKey])){
             return $this->update();
         }
@@ -63,12 +81,12 @@ abstract class Model{
         return $this->insert();
     }
 
-    public function insert():boll{
+    public function insert():bool{
         $columns = array_keys($this->attributes);
 
         $values = array_values($this->attributes);
 
-        $placeholders = array_fill(0, $count($columns), '?');
+        $placeholders = array_fill(0, count($columns), '?');
 
         $sql = sprintf(
             "INSERT INTO %s (%s) VALUES (%s)",
@@ -78,17 +96,17 @@ abstract class Model{
         );
 
 
-        $stmt = self::$db->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $result = $stmt->execute($values);
 
         if($result){
-            $this->attribute[$this->primaryKey] = self::db->lastInsertId();
+            $this->attributes[$this->primaryKey] = $this->db->lastInsertId();
         }
 
         return $result;
     }
 
-    public function update():boll{
+    public function update():bool{
         $columns = array_keys($this->attributes);
         $setClause = [];
 
@@ -118,5 +136,49 @@ abstract class Model{
 
         $stmt = self::$db->prepare($sql);
         return $stmt->execute($finalValues);
+    }
+
+    protected function hasMany(string $relatedClass, string $foreignKey): array
+    {
+        $instance = new $relatedClass(); 
+        
+        $myId = $this->attributes[$this->primaryKey] ?? null;
+        if (!$myId) return []; 
+
+        $sql = "SELECT * FROM {$instance->table} WHERE {$foreignKey} = :id";
+        $stmt = self::$db->prepare($sql);
+        $stmt->execute(['id' => $myId]);
+        
+        $results = [];
+        
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $obj = new $relatedClass();
+            $obj->attributes = $row;
+            $results[] = $obj;
+        }
+
+        return $results;
+    }
+
+
+    protected function belongsTo(string $relatedClass, string $foreignKey): ?object
+    {
+        $instance = new $relatedClass();
+        
+        $foreignId = $this->attributes[$foreignKey] ?? null;
+        if (!$foreignId) return null;
+
+        $sql = "SELECT * FROM {$instance->table} WHERE {$instance->primaryKey} = :id LIMIT 1";
+        $stmt = self::$db->prepare($sql);
+        $stmt->execute(['id' => $foreignId]);
+        
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            $instance->attributes = $row;
+            return $instance;
+        }
+
+        return null;
     }
 }

@@ -5,31 +5,44 @@ namespace Core;
 use Core\Container\Container;
 use Core\Routing\Router;
 use Core\Http\Request;
+use Core\Providers\DatabaseServiceProvider;
 
-class Application extends Container{
+class Application{
 
     protected string $basePath;
+    protected Container $container;
+    protected array $providers = [
+        DatabaseServiceProvider::class,
+    ];
 
-    public function __construct(string $basePath){
+    public function __construct(string $basePath, array $providers = [] ){
         $this->basePath = $basePath;
-        
-        $this->singleton(Application::class, $this);
+        $this->container = new Container();
+        $this->providers = array_merge($this->providers, $providers);
 
-        $this->singleton(Request::class, function($app){
+        
+
+        foreach ($this->providers as $providerClass){
+            $provider = new $providerClass($this->container);
+            $provider->register();
+        }
+        $this->container->singleton(Application::class, $this);
+
+        $this->container->singleton(Request::class, function(){
             return new Request();
         });
 
-        $this->singleton(Router::class, function($app){
-            return new Router($app);
+        $this->container->singleton(Router::class, function(){
+            return new Router($this);
         });
 
     }
 
 
     public function run():void{
-        $router = $this->resolve(Router::class);
+        $router = $this->container->resolve(Router::class);
 
-        $request = $this->resolve(Request::class);
+        $request = $this->container->resolve(Request::class);
 
         echo $router->resolve($request->getUri());
     }
